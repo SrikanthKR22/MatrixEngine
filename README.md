@@ -1,2 +1,2 @@
 # MatrixEngine
-A python class that works with 2d matrices
+A Python Class that works with 2D matrices
