@@ -1,6 +1,8 @@
 class Matrix:
 
     def __init__(self, data): #accepts a nested list
+        if not self._validate(data):
+            return
         self.matrix = data
         self._row_count = len(data)
         self._column_count = len(data[0])
@@ -31,13 +33,28 @@ class Matrix:
 
         return(cls(data))
 
-    def __str__(self):
+    def _validate(data):
+
+        len_test_value = len(data[0])
+        row_num = 0
+        for i in data:
+            row_num += 1 
+            if len(i) != len_test_value:
+                print(f"Matrix dimensions violated! Row-{row_num}, Expected: [no of columns = {len_test_value}]")
+                return False
+
         
+
+    @property
+    def fetcher(self):
+        pass
+
+    def __str__(self):
         len_list = []
         for row in self.matrix:
             for element in row:
                 len_list.append(len(str(element)))
-            len_maxxer = max(len_list)
+        len_maxxer = max(len_list)
 
         displaystr = '\n ' + '_'*(len_maxxer+1) + ' '*(len_maxxer*(self._column_count+1)) + '_'*(len_maxxer+1) +  '\n'
         for row in self.matrix:
