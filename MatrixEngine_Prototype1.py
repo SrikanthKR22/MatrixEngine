@@ -1,3 +1,6 @@
+import math
+import re
+
 class Matrix:
 
     def __init__(self, data): #accepts a nested list
@@ -33,17 +36,46 @@ class Matrix:
 
         return(cls(data))
 
+    @staticmethod
     def _validate(data):
-
         len_test_value = len(data[0])
-        row_num = 0
+        row_num = -1
         for i in data:
-            row_num += 1 
+            row_num += 1
+            col_num = -1
             if len(i) != len_test_value:
-                print(f"Matrix dimensions violated! Row-{row_num}, Expected: [no of columns = {len_test_value}]")
+                print(f"Matrix dimensions violated! Row-{row_num+1}, Expected: [no of columns = {len_test_value}]")
                 return False
+            for j in i:
+                col_num += 1
+                if isinstance(j, str) and j.startswith('exp(') and j.endswith(')'):
+                    data[row_num][col_num] = j[4:-1]
+                elif not isinstance(j, (int, float, complex)):
+                    print(f'Element Violated! Element at ele{row_num+1}{col_num+1} is not a numeral value')
+                    return False
+        return True
 
-        
+    def exp_solve(self):
+        solve_dict = dict()
+        search_pattern = re.compile(r'([a-zA-Z]+)\(([+-]?\d*\.?\d+)\)')
+        for row_count, row in enumerate(self.matrix):
+            for col_count, element in enumerate(row):
+                if isinstance(element,str):
+                    match = search_pattern.fullmatch(element)
+                    if match:
+                        func = match.group(1)
+                        parameter = float(match.group(2))
+                        func_math = getattr(math, func)
+                        result = func_math(parameter)
+                        index = (row_count, col_count)
+                        solve_dict[index] = result
+
+        for index, value in solve_dict.items():
+            rindex, cindex = index
+            self.matrix[rindex][cindex] = value
+
+        return self.matrix
+                                            
 
     @property
     def fetcher(self):
@@ -74,3 +106,13 @@ data = [
 ]
 mat = Matrix(data)
 print(mat)
+
+solve_test_nlist = [
+    [12, "exp(sin(30))", 7.5],
+    ["exp(cos(60))", -4, "exp(sqrt(81))"],
+    [3.14, "exp(tan(45))", "exp(log10(1000))"]
+]
+
+solve_test_matrix = Matrix(solve_test_nlist)
+print('Sucess!!!')
+print(solve_test_matrix)
