@@ -100,8 +100,8 @@ class Matrix:
         for col in range(self._column_count):
             current_col_len = []
             for row in self.matrix:
-                current_col_len.append(len(str((row[col]))))
-                col_len.append(max(current_col_len)+2)
+                current_col_len.append(len(str(row[col])))
+            col_len.append(max(current_col_len)+2)
         #prepping print_strs
         for rno, row in enumerate(self.matrix):
             body_str += '| '
@@ -131,8 +131,8 @@ class Matrix:
                     self.parameter = float(match.group(2))
                     trig_funcs = ['sin', 'cos', 'tan', 'cosec', 'sec', 'cot']
                     if self.func_name in trig_funcs:
-                        self.parameter = math.radians(self.parameter)
-                    self.result = self.function(self.parameter)
+                        self.parameter = round(math.radians(self.parameter), 4)
+                    self.result = round(self.function(self.parameter), 4)
                     self.valid = True
                 else:
                     print(f"Element Violated! Invalid Expresion at ele{row_no}{col_no}")
