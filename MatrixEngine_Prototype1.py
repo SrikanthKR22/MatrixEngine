@@ -84,28 +84,36 @@ class Matrix:
     
     def transpose(self):
         if hasattr(self, 'matrix'):
-            self._transpose = []
+            transpose = []
             for col_count in range(self._column_count):
                 new_row = []
                 for row in self.matrix:
                     new_row.append(row[col_count])
-                self._transpose.append(new_row)
-            return Matrix(self._transpose)
+                transpose.append(new_row)
+            return Matrix(transpose)
 
     def __str__(self):
-        len_list = []
-        for row in self.matrix:
-            for element in row:
-                len_list.append(len(str(element)))
-        len_maxxer = max(len_list)
-        displaystr = '\n ' + '_'*(len_maxxer+1) + ' '*(len_maxxer*(self._column_count+1)) + '_'*(len_maxxer+1) +  '\n'
-        for row in self.matrix:
-            displaystr += '| '
-            for element in row:
-                displaystr += str(element) + ' '*(len_maxxer - len(str(element))+1)
-            displaystr += '|\n'
-        displaystr += ' ' + '¯'*(len_maxxer+1) + ' '*(len_maxxer*(self._column_count+1)) + '¯'*(len_maxxer+1) +  '\n'
-        return displaystr
+        print_str = '\n'
+        body_str = ''
+        #column specific max lens
+        col_len = []
+        for col in range(self._column_count):
+            current_col_len = []
+            for row in self.matrix:
+                current_col_len.append(len(str((row[col]))))
+                col_len.append(max(current_col_len)+2)
+        #prepping print_strs
+        for rno, row in enumerate(self.matrix):
+            body_str += '| '
+            for cno, element in enumerate(row):
+                body_str += str(element) + ' '*(col_len[cno] - len(str(element)))
+            body_str += '|\n'
+        horizontal_len = len(body_str.split('\n')[0])
+        dashcount = max(round(horizontal_len*0.1), 1)
+        head = '\n ' + '_'*dashcount + ' '*(horizontal_len-(2*dashcount)-2) + '_'*dashcount + '\n'
+        foot = ' ' + '‾'*dashcount + ' '*(horizontal_len-(2*dashcount)-2) + '‾'*dashcount + '\n'
+        print_str = head + body_str + foot
+        return print_str
 
 
     class Exp:
@@ -143,11 +151,12 @@ data = [
     [25, 99, 38, 6, 47, 81, 32],
     [70, 11, 59, 23, 95, 40, 68]
 ]
+print()
 mat = Matrix(data)
 print(mat)
-a = Matrix(mat.transpose())
+a = mat.transpose()
 print(a)
-'''print()
+print()
 solve_test_nlist = [
     [12, "exp(sin(30))", 7.5],
     ["exp(cos(60))", -4, "exp(sqrt(81))"],
@@ -155,4 +164,4 @@ solve_test_nlist = [
 ]
 matrix_object = Matrix(solve_test_nlist)
 print(matrix_object)
-print(matrix_object.exp_solve())'''
+print(matrix_object.exp_solve())
