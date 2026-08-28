@@ -67,14 +67,8 @@ class Matrix:
 
     def exp_solve(self):
         if hasattr(self, 'matrix'):
-            solve_dict = dict()
-            for row_index, row in enumerate(self.matrix):
-                for col_index, element in enumerate(row):
-                    if isinstance(element, Matrix.Exp):
-                        solve_dict[(row_index, col_index)] = element.result
-            for row_index, col_index in solve_dict.keys():
-                self.matrix[row_index][col_index] = solve_dict[(row_index, col_index)]
-            return self
+            exp_solved_matrix = [[element.result if isinstance(element, Matrix.Exp) else element for element in row] for row in self.matrix]
+            return Matrix(exp_solved_matrix)
         else:
             print("Invalid Matrix! Cannot Solve Expressions ")
 
