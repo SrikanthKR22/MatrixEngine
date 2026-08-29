@@ -1,8 +1,6 @@
 import math
 import re
-math.cosec = lambda x: 1 / math.sin(x)
-math.sec = lambda x: 1 / math.cos(x)
-math.cot = lambda x: 1 / math.tan(x)
+
 
 class Matrix:
 
@@ -13,18 +11,7 @@ class Matrix:
         self.matrix = data
         self._row_count = len(data)
         self._column_count = len(data[0])
-        self._construct_datadict()
         print("Matrix Constructed!")
-
-    def _construct_datadict(self):
-        self._datadict = dict()
-        row_count = 1
-        for row in self.matrix:
-            col_count = 1
-            for element in row:   
-                self._datadict[f'ele{row_count}{col_count}'] = element
-                col_count += 1
-            row_count += 1
 
     @classmethod
     def from_inputs(cls):
@@ -41,6 +28,16 @@ class Matrix:
 
     @staticmethod
     def _validate(data):
+        if not (data and isinstance(data, list)):
+            print(f"TypeError: The data should be in the form of nested Lists only!")
+            return
+        for i in data:
+            if not isinstance(i, list):
+                print(f"TypeError: The row data should be in the form of Lists only!")
+                return
+            if not i:
+                print("ValueError: Given Data must atleast contain one column!")
+                return
         len_test_value = len(data[0])
         for row_no, row in enumerate(data,1):
             if len(row) != len_test_value:
@@ -72,9 +69,8 @@ class Matrix:
         else:
             print("Invalid Matrix! Cannot Solve Expressions ")
 
-    @property
-    def fetcher(self):
-        pass
+    def get(self, row, col):
+        return self.matrix[row-1][col-1]
     
     def transpose(self):
         if hasattr(self, 'matrix'):
@@ -123,11 +119,17 @@ class Matrix:
                 if hasattr(math, self.func_name):
                     self.function = getattr(math, self.func_name)
                     self.parameter = float(match.group(2))
-                    trig_funcs = ['sin', 'cos', 'tan', 'cosec', 'sec', 'cot']
+                    trig_funcs = ['sin', 'cos', 'tan']
                     if self.func_name in trig_funcs:
                         self.parameter = round(math.radians(self.parameter), 4)
                     self.result = round(self.function(self.parameter), 4)
                     self.valid = True
+                elif self.func_name in ['cosec', 'sec', 'cot']:
+                    self.function = getattr(Matrix.Exp, self.func_name)
+                    self.parameter = round(math.radians(float(match.group(2))),4)
+                    self.result = round(self.function(self.parameter),4)
+                    self.valid = True
+
                 else:
                     print(f"Element Violated! Invalid Expresion at ele{row_no}{col_no}")
                     return
@@ -136,6 +138,17 @@ class Matrix:
 
         def __str__(self):
             return f'{self.func_name}({self.parameter})'
+
+        @staticmethod
+        def cosec(parameter):
+            return 1/(math.sin(parameter))
+        @staticmethod
+        def sec(parameter):
+            return 1/(math.cos(parameter))
+        @staticmethod
+        def cot(parameter):
+            return 1/(math.tan(parameter))
+
     
 
 data = [
@@ -154,7 +167,7 @@ print()
 solve_test_nlist = [
     [12, "exp(sin(30))", 7.5],
     ["exp(cos(60))", -4, "exp(sqrt(81))"],
-    [3.14, "exp(tan(45))", "exp(log10(1000))"]
+    [3.14, "exp(cot(45))", "exp(log10(1000))"]
 ]
 matrix_object = Matrix(solve_test_nlist)
 print(matrix_object)
