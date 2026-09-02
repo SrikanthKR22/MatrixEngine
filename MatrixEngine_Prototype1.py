@@ -1,7 +1,6 @@
 #_____________________________________________________________________________________________IMPORTS_____________________________________________________________________________________________#
 import math
 import re
-import copy
 #_____________________________________________________________________________________________CLASSES_____________________________________________________________________________________________#
 
 class Matrix:
@@ -15,7 +14,6 @@ class Matrix:
         self.matrix = data
         self._row_count = len(data)
         self._column_count = len(data[0])
-        print("Matrix Constructed!")
 
     @classmethod
     def from_inputs(cls):
@@ -48,14 +46,13 @@ class Matrix:
                 print(f"Matrix dimensions violated! Row-{row_no}, Expected: [no of columns = {len_test_value}]")
                 return
         exp_dict = dict()
-        temp_dict = dict()
         for row_no, row in enumerate(data,1):
             for col_no, element in enumerate(row,1):
                 if isinstance(element, str) and element.startswith('exp(') and element.endswith(')'):
                     element = element[4:-1]
-                    temp_dict[row_no, col_no] = Matrix.Exp(element, row_no, col_no)
-                    if temp_dict[row_no, col_no].valid:
-                        exp_dict[(row_no, col_no)] = temp_dict[row_no, col_no]
+                    temp_exp  = Matrix.Exp(element, row_no, col_no)
+                    if temp_exp.valid:
+                        exp_dict[(row_no, col_no)] = temp_exp
                     else:
                         print(f"Element Violated! Invalid expression at a{row_no}{col_no}")
                         return
@@ -76,7 +73,7 @@ class Matrix:
             print("MatrixError: Matrix does not Exist!")
 
     def is_mat(self):
-        if hasattr(self, 'Matrix'):
+        if hasattr(self, 'matrix'):
             return True
         else:
             print("MatrixError: Matrix does not Exist!")
@@ -94,8 +91,7 @@ class Matrix:
 
     def __len__(self):
         if self.is_mat():
-            if hasattr(self, 'Matrix'):
-                return (self._row_count, self._column_count)
+            return (self._row_count, self._column_count)
 
     def __str__(self):
         if self.is_mat():
@@ -120,6 +116,8 @@ class Matrix:
             foot = ' ' + '‾'*dashcount + ' '*(horizontal_len-(2*dashcount)-2) + '‾'*dashcount + '\n'
             print_str = head + body_str + foot
             return print_str
+        else:
+            return 'PrintError'
 
 
     class Exp:
@@ -181,13 +179,15 @@ class Matrix:
             return Matrix([[(row[col_count]) for row in self.matrix] for col_count in range(self._column_count)])
 
     def det_22(self): # gets 2x2, returns value
-        if self.is_22():
-            return (self.get(1,1) * self.get(2,2)) - (self.get(1,2) * self.get(2,1))
+        pass
 
     def determinant(self):
         if self.is_mat():
             if self.is_square():
-                pass
+                if self.is_22():
+                    return (self.get(1,1) * self.get(2,2)) - (self.get(1,2) * self.get(2,1))
+                else:
+                    return sum(((-1)**no * top_row_element * self.minor_of_ele_Mat(1,no+1).determinant()) for no, top_row_element in enumerate(self.matrix[0]))
             else:
                 print("ValueError: Cannot calculate determinant for a non square Matrix!")
 
@@ -203,15 +203,17 @@ class Matrix:
 
     def minor_of_ele_Mat(self, row, col): #-> MinorMatrix of a particular element
         if self.validate_rc(row, col):
-            minor_matrix = copy.deepcopy(self.matrix)
-            pass
+            return Matrix([[element for cno, element in enumerate(row_iter,1) if cno!=col] for rno, row_iter in enumerate(self.matrix,1) if rno!=row])
 
     def minor_of_ele_Val(self, row, col): #-> MinorValue of a particular element
-        if self.validate_rc(row, col):
-            pass
+        if self.is_square():
+            if self.validate_rc(row, col):
+                return self.minor_of_ele_Mat(row,col).determinant()
+        else:
+            print("ValueError: Cannot calculate determinant for a non square Matrix!")
 
     def minor_matrix(self): #-> Matrix Of Minor Values of the entire Original Matrix
-        pass
+        return Matrix([[self.minor_of_ele_Val(rno+1, cno+1) for cno in range(self._column_count)] for rno in range(self._row_count)])
 
     def cofac_of_ele_Mat(self, row, col): #-> CofacMatrix of a particular element
         if self.validate_rc(row,col):
@@ -254,7 +256,7 @@ class Matrix:
                 for row in self.matrix:
                     current_result_row = []
                     for cno in range(other._column_count):
-                        elemental_result = sum([(row[i]*other.matrix[i][cno]) for i in range(other._row_count)])
+                        elemental_result = sum((row[i]*other.matrix[i][cno]) for i in range(other._row_count))
                         current_result_row.append(elemental_result)
                     result.append(current_result_row)
                 return Matrix(result)
@@ -299,7 +301,7 @@ class Matrix:
 #________________________________________________________________________________________________===_______________________________________________________________________________________________#
 
 
-data = [
+'''data = [
     [12, 5, 83, 41, 7, 29, 64],
     [91, 34, 16, 72, 8, 55, 20],
     [43, 67, 3, 88, 51, 14, 76],
@@ -322,3 +324,17 @@ print(matrix_object)
 print(matrix_object.exp_solve())
 print(a + mat)
 print(a + a)
+print(mat.minor_of_ele_Mat(3,4))
+print(mat.determinant())'''
+
+data2 = [
+    [2, 1, 3, 0, 4],
+    [1, 0, 2, 5, 1],
+    [3, 2, 1, 1, 0],
+    [0, 4, 2, 1, 3],
+    [5, 1, 0, 2, 2]
+]
+mat2 = Matrix(data2)
+print(mat2)
+print(mat2.determinant())
+print(mat2.minor_of_ele_Val(3,4))
