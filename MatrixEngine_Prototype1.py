@@ -1,6 +1,7 @@
 #_____________________________________________________________________________________________IMPORTS_____________________________________________________________________________________________#
 import math
 import re
+import copy
 #_____________________________________________________________________________________________CLASSES_____________________________________________________________________________________________#
 
 class Matrix:
@@ -83,15 +84,16 @@ class Matrix:
             if self._row_count == self._column_count:
                 return True
     def is_22(self):
-        if (self._row_count == 2) and (self._column_count == 2):
-            return True
+        if self.is_mat():
+            if (self._row_count == 2) and (self._column_count == 2):
+                return True
 
     def get(self, row, col):
         return self.matrix[row-1][col-1]
 
-    def __len__(self):
-        if self.is_mat():
-            return (self._row_count, self._column_count)
+    @property
+    def dimensions(self):
+        return (self._row_count, self._column_count)
 
     def __str__(self):
         if self.is_mat():
@@ -105,7 +107,7 @@ class Matrix:
                     current_col_len.append(len(str(row[col])))
                 col_len.append(max(current_col_len)+2)
             #prepping print_strs
-            for rno, row in enumerate(self.matrix):
+            for row in self.matrix:
                 body_str += '| '
                 for cno, element in enumerate(row):
                     body_str += str(element) + ' '*(col_len[cno] - len(str(element)))
@@ -178,24 +180,42 @@ class Matrix:
         if self.is_mat():
             return Matrix([[(row[col_count]) for row in self.matrix] for col_count in range(self._column_count)])
 
-    def det_22(self): # gets 2x2, returns value
-        pass
-
-    def determinant(self):
+    def determinant_laplace(self):
         if self.is_mat():
             if self.is_square():
                 if self.is_22():
                     return (self.get(1,1) * self.get(2,2)) - (self.get(1,2) * self.get(2,1))
                 else:
-                    return sum(((-1)**no * top_row_element * self.minor_of_ele_Mat(1,no+1).determinant()) for no, top_row_element in enumerate(self.matrix[0]))
+                    return sum(((-1)**no * top_row_element * self.minor_of_ele_Mat(1,no+1).determinant_laplace()) for no, top_row_element in enumerate(self.matrix[0]))
             else:
                 print("ValueError: Cannot calculate determinant for a non square Matrix!")
 
+    def determinant_gaussian(self):
+        gauss = copy.deepcopy(self.matrix)
+        result = 1
+        for rno in range(self._row_count): #pivot-by-pivot
+            pivot = gauss[rno][rno]
+            if pivot == 0:
+                for pivot_search in range(rno+1, self._row_count):
+                    if gauss[pivot_search][rno] != 0:
+                        pivot = gauss[pivot_search][rno]
+                        gauss[rno],gauss[pivot_search] = gauss[pivot_search],gauss[rno]
+                        result *= -1
+                        break
+                else:
+                    continue
+            for to_zero in range(rno+1, self._row_count): #row-by-row, eliminating zeros
+                factor = gauss[to_zero][rno] / pivot
+                gauss[to_zero] = list(map(lambda r1,r2: r2 - factor*r1, gauss[rno],gauss[to_zero]))
+        for i in range(self._row_count): # product of diagonal entries of triangular matrix
+            result *= gauss[i][i]
+        return round(result,4)
+    
     def inverse(self): #-> Matrix
         if self.is_mat():
             if self.is_square():
                 try:
-                    return Matrix((1/self.determinant()) * self.adj())
+                    return Matrix((1/self.determinant_gaussian()) * self.adj())
                 except ZeroDivisionError:
                     print("Non-Invertible and Singular Matrix!")
             else:
@@ -208,7 +228,7 @@ class Matrix:
     def minor_of_ele_Val(self, row, col): #-> MinorValue of a particular element
         if self.is_square():
             if self.validate_rc(row, col):
-                return self.minor_of_ele_Mat(row,col).determinant()
+                return self.minor_of_ele_Mat(row,col).determinant_gaussian()
         else:
             print("ValueError: Cannot calculate determinant for a non square Matrix!")
 
@@ -225,7 +245,7 @@ class Matrix:
 
     def cofac_matrix(self): #-> Matrix Of Cofactor Values of the entire Original Matrix
         if self.is_mat():
-            return Matrix([[(element * (-1)**(rno+cno)) for cno,element in enumerate(row,1)] for rno,row in enumerate(self.matrix_minor_vals(),1)])
+            return Matrix([[(element * (-1)**(rno+cno)) for cno,element in enumerate(row,1)] for rno,row in enumerate(self.minor_matrix(),1)])
         
     def adj(self):
         if self.is_mat():
@@ -234,14 +254,14 @@ class Matrix:
     #____________________________________________________________________________________INTER_OPERATIONS____________________________________________________________________________________#
 
     def __add__(self, other):
-        if self.is_mat() and other.ismat():
+        if self.is_mat() and other.is_mat():
             if (self._row_count == other._row_count) and (self._column_count == other._column_count):
                 return Matrix([[element + other.matrix[rno][cno] for cno,element in enumerate(row)] for rno,row in enumerate(self.matrix)])
             else:
                 print("Cannot Add Matrices! Matrix Dimensions do not match!")
 
     def __sub__(self, other):
-        if self.is_mat() and other.ismat():
+        if self.is_mat() and other.is_mat():
             if (self._row_count == other._row_count) and (self._column_count == other._column_count):
                 return Matrix([[element - other.matrix[rno][cno] for cno,element in enumerate(row)] for rno,row in enumerate(self.matrix)])
             else:
@@ -250,7 +270,7 @@ class Matrix:
     def __mul__(self, other):
         if self.is_mat() and isinstance(other, (int, float)):
             return Matrix([[(element * other) for element in row] for row in self.matrix])
-        elif self.is_mat() and other.ismat():
+        elif self.is_mat() and other.is_mat():
             if self._column_count == other._row_count:
                 result = []
                 for row in self.matrix:
@@ -270,25 +290,25 @@ class Matrix:
             return self*other
 
     def ele_wise_mul(self, other):
-        if self.is_mat() and other.ismat():
+        if self.is_mat() and other.is_mat():
             if (self._row_count == other._row_count) and (self._column_count == other._column_count):
                 return Matrix([[element * other.matrix[rno][cno] for cno,element in enumerate(row)] for rno,row in enumerate(self.matrix)])
             else:
                 print("Cannot Multiply Matrices! Matrix Dimensions do not match!")
 
     def __truediv__(self, other):
-        if self.is_mat() and other.ismat():
-            return Matrix(self.matrix * other.inverse())
+        if self.is_mat() and other.is_mat():
+            return self * other.inverse()
 
     def ele_wise_div(self, other):
-        if self.is_mat() and other.ismat():
+        if self.is_mat() and other.is_mat():
             if (self._row_count == other._row_count) and (self._column_count == other._column_count):
                 return Matrix([[element / other.matrix[rno][cno] for cno,element in enumerate(row)] for rno,row in enumerate(self.matrix)])
             else:
                 print("Cannot Divide Matrices! Matrix Dimensions do not match!")
 
     def ele_wise_floor_div(self, other):
-        if self.is_mat() and other.ismat():
+        if self.is_mat() and other.is_mat():
             if (self._row_count == other._row_count) and (self._column_count == other._column_count):
                 return Matrix([[element // other.matrix[rno][cno] for cno,element in enumerate(row)] for rno,row in enumerate(self.matrix)])
             else:
@@ -296,7 +316,7 @@ class Matrix:
 
     def __neg__(self):
         if self.is_mat():
-            return Matrix(self.matrix*(-1))
+            return self*(-1)
 #________________________________________________________________________________________________END_______________________________________________________________________________________________#
 #________________________________________________________________________________________________===_______________________________________________________________________________________________#
 
@@ -336,5 +356,5 @@ data2 = [
 ]
 mat2 = Matrix(data2)
 print(mat2)
-print(mat2.determinant())
-print(mat2.minor_of_ele_Val(3,4))
+print(mat2.determinant_laplace())
+print(mat2.determinant_gaussian())
