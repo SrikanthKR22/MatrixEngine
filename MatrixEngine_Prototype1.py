@@ -2,6 +2,7 @@
 import math
 import re
 import copy
+import timeit
 #_____________________________________________________________________________________________CLASSES_____________________________________________________________________________________________#
 
 class Matrix:
@@ -33,6 +34,7 @@ class Matrix:
     def _validate(data):
         if not (data and isinstance(data, list)):
             print(f"TypeError: The data should be in the form of nested Lists only!")
+            print(data)
             return
         for i in data:
             if not isinstance(i, list):
@@ -57,7 +59,7 @@ class Matrix:
                     else:
                         print(f"Element Violated! Invalid expression at a{row_no}{col_no}")
                         return
-                elif not isinstance(element, (int, float, complex)):
+                elif not isinstance(element, (int, float, Matrix.Exp, Matrix.Compound_Exp)):
                     print(f'Element Violated! Element at ele{row_no}{col_no} is not a numeral value or an expression')
                     return
         for (row, col), value in exp_dict.items():
@@ -87,6 +89,9 @@ class Matrix:
         if self.is_mat():
             if (self._row_count == 2) and (self._column_count == 2):
                 return True
+            
+    def has_exp(self):
+        return any((isinstance(element, (Matrix.Exp, Matrix.Compound_Exp)) for element in row) for row in self.matrix)
 
     def get(self, row, col):
         return self.matrix[row-1][col-1]
@@ -153,8 +158,74 @@ class Matrix:
                 print(f"Element Violated! Invalid Expresion at ele{row_no}{col_no}")
 
         def __str__(self):
-            return f'{self.func_name}({self.parameter})'
+            return f'{self.func_name}({round(math.degrees(self.parameter))})' if self.func_name in ['sin', 'cos', 'tan', 'cosec', 'sec', 'cot'] else f'{self.func_name}({self.parameter})'
 
+        def __add__(self, other):
+            a = self.result if isinstance(self, Matrix.Exp) else self
+            b = other.result if isinstance(other, Matrix.Exp) else other
+            result = a + b
+            return(Matrix.Compound_Exp(self, other, ' + ', result))
+
+        def __radd__(self, other):
+            return self + other
+
+        def __sub__(self, other):
+            a = self.result if isinstance(self, Matrix.Exp) else self
+            b = other.result if isinstance(other, Matrix.Exp) else other
+            result = a - b
+            return(Matrix.Compound_Exp(self, other, ' - ', result))
+
+        def __rsub__(self, other):
+            a = self.result if isinstance(self, Matrix.Exp) else self
+            b = other.result if isinstance(other, Matrix.Exp) else other
+            result = b - a
+            return Matrix.Compound_Exp(other, self, ' - ', result)
+
+        def __mul__(self, other):
+            a = self.result if isinstance(self, Matrix.Exp) else self
+            b = other.result if isinstance(other, Matrix.Exp) else other
+            result = a * b
+            return(Matrix.Compound_Exp(self, other, ' * ', result))
+
+        def __rmul__(self, other):
+            return self*other
+
+        def __truediv__(self, other):
+            try:
+                a = self.result if isinstance(self, Matrix.Exp) else self
+                b = other.result if isinstance(other, Matrix.Exp) else other
+                result = a / b
+                return(Matrix.Compound_Exp(self, other, ' / ', result))
+            except ZeroDivisionError:
+                print(f"Zero Division Error at exp: {self}/{other}")
+
+        def __rtruediv__(self, other):
+            try:
+                a = self.result if isinstance(self, Matrix.Exp) else self
+                b = other.result if isinstance(other, Matrix.Exp) else other
+                result = b / a
+                return(Matrix.Compound_Exp(other, self, ' / ', result))
+            except ZeroDivisionError:
+                print(f"Zero Division Error at exp: {other}/{self}")
+
+        def __floordiv__(self, other):
+            try:
+                a = self.result if isinstance(self, Matrix.Exp) else self
+                b = other.result if isinstance(other, Matrix.Exp) else other
+                result = a // b
+                return(Matrix.Compound_Exp(self, other, ' // ', result))
+            except ZeroDivisionError:
+                print(f"Zero Division Error at exp: {self}//{other}")
+
+        def __rfloordiv__(self, other):
+            try:
+                a = self.result if isinstance(self, Matrix.Exp) else self
+                b = other.result if isinstance(other, Matrix.Exp) else other
+                result = b // a
+                return(Matrix.Compound_Exp(other, self, ' // ', result))
+            except ZeroDivisionError:
+                print(f"Zero Division Error at exp: {other}//{self}")
+        
         @staticmethod
         def cosec(parameter):
             return 1/(math.sin(parameter))
@@ -166,14 +237,22 @@ class Matrix:
             return 1/(math.tan(parameter))
 
 
-        class Compound_Exp():
-            pass
+    class Compound_Exp():
 
+        def __init__(self, operand1, operand2, operator, result):
+            self.operand1 = operand1
+            self.operand2 = operand2
+            self.operator = operator
+            self.result = result
+
+        def __str__(self):
+            return '[' + str(self.operand1) + self.operator + str(self.operand2) + ']'
+            
     #____________________________________________________________________________________LOCAL_OPERATIONS____________________________________________________________________________________#
 
     def exp_solve(self):
         if self.is_mat():
-            exp_solved_matrix = [[element.result if isinstance(element, Matrix.Exp) else element for element in row] for row in self.matrix]
+            exp_solved_matrix = [[element.result if isinstance(element, (Matrix.Exp, Matrix.Compound_Exp)) else element for element in row] for row in self.matrix]
             return Matrix(exp_solved_matrix)
 
     def transpose(self):
@@ -183,6 +262,10 @@ class Matrix:
     def determinant_laplace(self):
         if self.is_mat():
             if self.is_square():
+                if self.has_exp():
+                    self = self.exp_solve()
+                if self._row_count == 1:
+                    return self.get(1,1)
                 if self.is_22():
                     return (self.get(1,1) * self.get(2,2)) - (self.get(1,2) * self.get(2,1))
                 else:
@@ -191,31 +274,41 @@ class Matrix:
                 print("ValueError: Cannot calculate determinant for a non square Matrix!")
 
     def determinant_gaussian(self):
-        gauss = copy.deepcopy(self.matrix)
-        result = 1
-        for rno in range(self._row_count): #pivot-by-pivot
-            pivot = gauss[rno][rno]
-            if pivot == 0:
-                for pivot_search in range(rno+1, self._row_count):
-                    if gauss[pivot_search][rno] != 0:
-                        pivot = gauss[pivot_search][rno]
-                        gauss[rno],gauss[pivot_search] = gauss[pivot_search],gauss[rno]
-                        result *= -1
-                        break
-                else:
-                    continue
-            for to_zero in range(rno+1, self._row_count): #row-by-row, eliminating zeros
-                factor = gauss[to_zero][rno] / pivot
-                gauss[to_zero] = list(map(lambda r1,r2: r2 - factor*r1, gauss[rno],gauss[to_zero]))
-        for i in range(self._row_count): # product of diagonal entries of triangular matrix
-            result *= gauss[i][i]
-        return round(result,4)
+        if self.is_mat():
+            if self.is_square():
+                gauss = copy.deepcopy(self.exp_solve().matrix)
+                result = 1
+                for rno in range(self._row_count): #pivot-by-pivot
+                    pivot = gauss[rno][rno]
+                    if pivot == 0:
+                        for pivot_search in range(rno+1, self._row_count):
+                            if gauss[pivot_search][rno] != 0:
+                                pivot = gauss[pivot_search][rno]
+                                gauss[rno],gauss[pivot_search] = gauss[pivot_search],gauss[rno]
+                                result *= -1
+                                break
+                        else:
+                            continue
+                    for to_zero in range(rno+1, self._row_count): #row-by-row, eliminating zeros
+                        factor = gauss[to_zero][rno] / pivot
+                        gauss[to_zero] = list(map(lambda r1,r2: r2 - factor*r1, gauss[rno],gauss[to_zero]))
+                for i in range(self._row_count): # product of diagonal entries of triangular matrix
+                    result *= gauss[i][i]
+                print(round(result))
+                return round(result,4)
+            else:
+                print('Cannot calculate determinant for a non sqaure matrix!')
+
+    def det_comp(self):
+        ltime = timeit.timeit(lambda: self.determinant_laplace(), number=10) / 10
+        gtime = timeit.timeit(lambda: self.determinant_gaussian(), number=10) / 10
+        return f"Laplace:\nDeterminant = {self.determinant_laplace()}\nTime = {ltime}\n\nGaussian:\nDeterminant = {self.determinant_gaussian()}\nTime = {gtime}\n\n"
     
     def inverse(self): #-> Matrix
         if self.is_mat():
             if self.is_square():
                 try:
-                    return Matrix((1/self.determinant_gaussian()) * self.adj())
+                    return (1/self.determinant_gaussian()) * self.adj()
                 except ZeroDivisionError:
                     print("Non-Invertible and Singular Matrix!")
             else:
@@ -228,6 +321,9 @@ class Matrix:
     def minor_of_ele_Val(self, row, col): #-> MinorValue of a particular element
         if self.is_square():
             if self.validate_rc(row, col):
+                if self.has_exp():
+                    solved_self = self.exp_solve()
+                    return solved_self.minor_of_ele_Mat(row,col).determinant_gaussian()
                 return self.minor_of_ele_Mat(row,col).determinant_gaussian()
         else:
             print("ValueError: Cannot calculate determinant for a non square Matrix!")
@@ -237,7 +333,7 @@ class Matrix:
 
     def cofac_of_ele_Mat(self, row, col): #-> CofacMatrix of a particular element
         if self.validate_rc(row,col):
-            return Matrix([[ (element * (-1)**(rno+cno)) for cno, element in enumerate(rowval,1)] for rno,rowval in enumerate(self.minor_of_ele_Mat(row,col),1)])
+            return Matrix([[ (element * (-1)**(rno+cno)) for cno, element in enumerate(rowval,1)] for rno,rowval in enumerate(self.minor_of_ele_Mat(row,col).matrix,1)])
 
     def cofac_of_ele_Val(self, row, col): #-> CofacValue of a particular element
         if self.validate_rc(row, col):
@@ -245,11 +341,35 @@ class Matrix:
 
     def cofac_matrix(self): #-> Matrix Of Cofactor Values of the entire Original Matrix
         if self.is_mat():
-            return Matrix([[(element * (-1)**(rno+cno)) for cno,element in enumerate(row,1)] for rno,row in enumerate(self.minor_matrix(),1)])
+            return Matrix([[(element * (-1)**(rno+cno)) for cno,element in enumerate(row,1)] for rno,row in enumerate(self.minor_matrix().matrix,1)])
         
     def adj(self):
         if self.is_mat():
-            return Matrix(self.cofac_matrix().transpose())
+            return self.cofac_matrix().transpose()
+
+    def rank(self):
+        if self.is_mat():
+            rank = 0
+            gauss = copy.deepcopy(self.matrix)
+            rno = 0
+            for cno in range(self._column_count):
+                if rno >= self._row_count:
+                    break
+                pivot = gauss[rno][cno]
+                if pivot == 0:
+                    for pivot_search in range(rno+1, self._row_count):
+                        if gauss[pivot_search][cno] != 0:
+                            pivot = gauss[pivot_search][cno]
+                            gauss[rno], gauss[pivot_search] = gauss[pivot_search], gauss[rno]
+                            break
+                    else:
+                        continue
+                for to_zero in range(rno+1, self._row_count):
+                    factor = gauss[to_zero][cno] / pivot
+                    gauss[to_zero] = list(map(lambda r1, r2: r2 - factor*r1, gauss[rno], gauss[to_zero]))
+                rno += 1
+                rank += 1
+            return rank
 
     #____________________________________________________________________________________INTER_OPERATIONS____________________________________________________________________________________#
 
@@ -273,10 +393,12 @@ class Matrix:
         elif self.is_mat() and other.is_mat():
             if self._column_count == other._row_count:
                 result = []
-                for row in self.matrix:
+                solved_self = self.exp_solve().matrix if self.has_exp() else self.matrix
+                solved_other = other.exp_solve().matrix if other.has_exp() else other.matrix
+                for row in solved_self:
                     current_result_row = []
                     for cno in range(other._column_count):
-                        elemental_result = sum((row[i]*other.matrix[i][cno]) for i in range(other._row_count))
+                        elemental_result = sum((row[i]*solved_other[i][cno]) for i in range(other._row_count))
                         current_result_row.append(elemental_result)
                     result.append(current_result_row)
                 return Matrix(result)
@@ -299,7 +421,12 @@ class Matrix:
     def __truediv__(self, other):
         if self.is_mat() and other.is_mat():
             return self * other.inverse()
+        if self.is_mat and isinstance(other, (int, float)):
+            return Matrix([[element/other for element in row] for row in self.matrix])
 
+    def __rtruediv__(self, other):
+        return other*self.inverse()
+    
     def ele_wise_div(self, other):
         if self.is_mat() and other.is_mat():
             if (self._row_count == other._row_count) and (self._column_count == other._column_count):
@@ -345,7 +472,7 @@ print(matrix_object.exp_solve())
 print(a + mat)
 print(a + a)
 print(mat.minor_of_ele_Mat(3,4))
-print(mat.determinant())'''
+print(mat.determinant())
 
 data2 = [
     [2, 1, 3, 0, 4],
@@ -356,5 +483,167 @@ data2 = [
 ]
 mat2 = Matrix(data2)
 print(mat2)
+print(mat2.rank())
+print(Matrix([[1,2],[3,4]]).rank())
 print(mat2.determinant_laplace())
 print(mat2.determinant_gaussian())
+
+M5 = [
+
+    [[2, 1, 3, 0, 4],
+     [1, 3, 2, 5, 1],
+     [3, 2, 1, 1, 0],
+     [0, 4, 2, 1, 3],
+     [5, 1, 0, 2, 2]],
+
+    [[4, 2, 0, 1, 3],
+     [1, 5, 2, 0, 4],
+     [3, 1, 6, 2, 0],
+     [0, 2, 1, 7, 5],
+     [2, 0, 4, 3, 6]],
+
+    [[1, -2, 3, 4, 0],
+     [5, 1, 0, -1, 2],
+     [2, 3, 4, 0, 1],
+     [0, 5, 2, 3, 4],
+     [3, 0, 1, 2, 5]],
+
+    [[0, 2, 1, 4, 3],
+     [5, 0, 2, 1, 6],
+     [1, 3, 0, 2, 4],
+     [2, 5, 1, 0, 3],
+     [4, 1, 3, 2, 0]],
+
+    [[1, 2, 3, 4, 5],
+     [2, 4, 6, 8, 10],
+     [3, 6, 9, 12, 15],
+     [4, 8, 12, 16, 20],
+     [5, 10, 15, 20, 25]]
+]
+for no, i in enumerate(M5):
+    print(Matrix(i).det_comp())
+
+A = Matrix([
+    ['exp(sin(90))',      "exp(sin(30))",  5],
+    ["exp(cos(60))", 4,       1],
+    [3,      "exp(tan(45))",  6]
+])
+
+B = Matrix([
+    ["exp(cos(0))",   3,   2],
+    ['exp(sin(30))',  4,   1],
+    [7,               5,   "exp(cos(60))"]
+])
+
+print()
+print(A)
+print(B)
+print()
+
+print(A+B)
+print((A+B).exp_solve())
+
+print(A-B)
+print((A-B).exp_solve())
+
+print(A*B)
+print((A*B).exp_solve())
+print(A.minor_of_ele_Mat(2,3))
+print(B.cofac_matrix())
+print(A.determinant_gaussian(), A.determinant_laplace())
+print(A.inverse() + B.cofac_matrix())
+print(Matrix([[1,2],[3,4]]) * Matrix([[5,6],[7,8]]))
+print(Matrix([["exp(sin(30))"]]) * Matrix([[2]]))'''
+print(Matrix([
+    [1, 2],
+    [3, 4]
+]).rank())  # 2
+
+print(Matrix([
+    [1, 2],
+    [2, 4]
+]).rank())  # 1
+
+print(Matrix([
+    [0, 0],
+    [0, 0]
+]).rank())  # 0
+
+print(Matrix([
+    [1, 0, 0],
+    [0, 2, 0],
+    [0, 0, 3]
+]).rank())  # 3
+
+print(Matrix([
+    [1, 2, 3],
+    [2, 4, 6],
+    [1, 1, 1]
+]).rank())  # 2
+
+print(Matrix([
+    [1, 2, 3],
+    [2, 4, 6],
+    [3, 6, 9]
+]).rank())  # 1
+
+print(Matrix([
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0]
+]).rank())  # 0
+
+print(Matrix([
+    [1, 2, 3],
+    [4, 5, 6]
+]).rank())  # 2
+
+print(Matrix([
+    [1, 2, 3],
+    [2, 4, 6]
+]).rank())  # 1
+
+print(Matrix([
+    [1, 0],
+    [0, 1],
+    [1, 1]
+]).rank())  # 2
+
+print(Matrix([
+    [1, 2],
+    [2, 4],
+    [3, 6]
+]).rank())  # 1
+
+print(Matrix([
+    [1, 2, 3],
+    [4, 5, 6],
+    [7, 8, 9]
+]).rank())  # 2
+
+print(Matrix([
+    [1, 2, 3, 4],
+    [2, 4, 6, 8],
+    [3, 6, 9, 12]
+]).rank())  # 1
+
+print(Matrix([
+    [1, 2, 3, 4],
+    [0, 1, 2, 3],
+    [1, 3, 5, 7]
+]).rank())  # 2
+
+print(Matrix([
+    [1, 2, 3, 4],
+    [2, 4, 6, 8],
+    [1, 0, 1, 0],
+    [0, 1, 0, 1]
+]).rank())  # 3
+
+print(Matrix([
+    [2, 1, 3, 0, 4],
+    [1, 0, 2, 5, 1],
+    [3, 2, 1, 1, 0],
+    [0, 4, 2, 1, 3],
+    [5, 1, 0, 2, 2]
+]).rank())  # 5
