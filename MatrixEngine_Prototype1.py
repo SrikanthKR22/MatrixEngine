@@ -294,7 +294,6 @@ class Matrix:
                         gauss[to_zero] = list(map(lambda r1,r2: r2 - factor*r1, gauss[rno],gauss[to_zero]))
                 for i in range(self._row_count): # product of diagonal entries of triangular matrix
                     result *= gauss[i][i]
-                print(round(result))
                 return round(result,4)
             else:
                 print('Cannot calculate determinant for a non sqaure matrix!')
@@ -419,7 +418,7 @@ class Matrix:
                 print("Cannot Multiply Matrices! Matrix Dimensions do not match!")
 
     def __truediv__(self, other):
-        if self.is_mat() and other.is_mat():
+        if self.is_mat() and hasattr(other, 'matrix'):
             return self * other.inverse()
         if self.is_mat and isinstance(other, (int, float)):
             return Matrix([[element/other for element in row] for row in self.matrix])
@@ -553,7 +552,7 @@ print(B.cofac_matrix())
 print(A.determinant_gaussian(), A.determinant_laplace())
 print(A.inverse() + B.cofac_matrix())
 print(Matrix([[1,2],[3,4]]) * Matrix([[5,6],[7,8]]))
-print(Matrix([["exp(sin(30))"]]) * Matrix([[2]]))'''
+print(Matrix([["exp(sin(30))"]]) * Matrix([[2]]))
 print(Matrix([
     [1, 2],
     [3, 4]
@@ -647,3 +646,23 @@ print(Matrix([
     [0, 4, 2, 1, 3],
     [5, 1, 0, 2, 2]
 ]).rank())  # 5
+'''
+
+data = [
+    [1, 0, 3],
+    [2, 1, -1],
+    [1, -1, 1]
+]
+
+A = Matrix(data)
+Asq = A*A
+Acub = Asq*A
+Aquad = Acub*A
+i = [
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1]
+]
+I = Matrix(i)
+print((Asq -3*A - I) / 9)
+print(A.inverse())
